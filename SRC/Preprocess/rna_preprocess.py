@@ -2,6 +2,7 @@ import pandas as pd
 
 df = pd.read_csv("expression/TCGA-BRCA.htseq_counts.tsv", sep="\t")
 manifest = pd.read_csv("hackathon_manifest.csv")
+gene_names_dict = pd.read_csv('ens_genename.txt', sep = '\t')
 
 def rna_preprocess(input_df: pd.DataFrame, manifest: pd.DataFrame, gene_list=False):
     """
