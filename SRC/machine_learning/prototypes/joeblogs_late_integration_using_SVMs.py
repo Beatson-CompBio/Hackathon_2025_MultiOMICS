@@ -9,7 +9,6 @@ from sklearn.svm import SVC
 
 logging.basicConfig(level=logging.INFO)
 
-
 def evaluate_model_on_preds(preds: np.ndarray, y_true: pd.Series) -> dict:
     """
     Evaluate the model predictions against true labels.

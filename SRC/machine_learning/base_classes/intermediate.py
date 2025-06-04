@@ -18,7 +18,7 @@ def evaluate_model_on_preds(preds: np.ndarray, y_true: pd.Series) -> dict:
 
 class ModalityEncoder(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, dropout=0.3):
-        super(ModalityEncoder, self).__init__()
+        super().__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.dropout = nn.Dropout(dropout)
         self.fc2 = nn.Linear(hidden_dim, output_dim)
@@ -30,23 +30,25 @@ class ModalityEncoder(nn.Module):
 
 
 class IntermediateIntegrationModel(nn.Module):
-    def __init__(self, input_dim1, input_dim2, hidden_dim=128, encoded_dim=64, dropout=0.3):
-        super(IntermediateIntegrationModel, self).__init__()
-        self.encoder1 = ModalityEncoder(input_dim1, hidden_dim, encoded_dim, dropout)
-        self.encoder2 = ModalityEncoder(input_dim2, hidden_dim, encoded_dim, dropout)
+    def __init__(self, input_dims, hidden_dim=128, encoded_dim=64, dropout=0.3):
+        super().__init__()
+        self.encoders = nn.ModuleList([
+            ModalityEncoder(in_dim, hidden_dim, encoded_dim, dropout)
+            for in_dim in input_dims
+        ])
+
         self.classifier = nn.Sequential(
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(2 * encoded_dim, hidden_dim),
+            nn.Linear(len(input_dims) * encoded_dim, hidden_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, 1)
         )
 
-    def forward(self, x1, x2):
-        feat1 = self.encoder1(x1)
-        feat2 = self.encoder2(x2)
-        combined = torch.cat((feat1, feat2), dim=-1)
+    def forward(self, inputs):
+        feats = [encoder(x) for encoder, x in zip(self.encoders, inputs)]
+        combined = torch.cat(feats, dim=-1)
         return self.classifier(combined).squeeze(-1)
 
 
@@ -62,26 +64,28 @@ class IntermediateIntegrationWrapper:
         self.dropout = dropout
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    def data(self, modality1, modality2):
-        y = modality1['subtype']
-        x1 = modality1.drop(columns=['subtype', 'submitter_id.samples'])
-        x2 = modality2.drop(columns=['subtype', 'submitter_id.samples'])
-        return x1, x2, y
+    def data(self, modalities: dict[str, pd.DataFrame]):
+        """
+        Extract features from each modality DataFrame.
+        Assumes all share the same labels in a 'subtype' column.
+        """
+        y = next(iter(modalities.values()))['subtype']
+        x_dfs = [
+            df.drop(columns=['subtype', 'submitter_id.samples']) for df in modalities.values()
+        ]
+        return x_dfs, y
 
-    #this is hard coded to two modalities! big no no!
-    def fit(self, train_mod1: pd.DataFrame, train_mod2: pd.DataFrame):
-        x1_df, x2_df, y_series = self.data(train_mod1, train_mod2)
-        x1 = torch.tensor(x1_df.values, dtype=torch.float32)
-        x2 = torch.tensor(x2_df.values, dtype=torch.float32)
+    def fit(self, train_modalities: dict[str, pd.DataFrame]):
+        x_dfs, y_series = self.data(train_modalities)
+        x_tensors = [torch.tensor(x.values, dtype=torch.float32) for x in x_dfs]
         y = torch.tensor(y_series.values, dtype=torch.float32)
 
-        dataset = TensorDataset(x1, x2, y)
+        dataset = TensorDataset(*x_tensors, y)
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
-        input_dim1 = x1.shape[1]
-        input_dim2 = x2.shape[1]
+        input_dims = [x.shape[1] for x in x_tensors]
         self.model = IntermediateIntegrationModel(
-            input_dim1, input_dim2,
+            input_dims=input_dims,
             hidden_dim=self.hidden_dim,
             encoded_dim=self.encoded_dim,
             dropout=self.dropout
@@ -92,10 +96,12 @@ class IntermediateIntegrationWrapper:
 
         self.model.train()
         for epoch in range(self.epochs):
-            for batch_x1, batch_x2, batch_y in loader:
-                batch_x1, batch_x2, batch_y = batch_x1.to(self.device), batch_x2.to(self.device), batch_y.to(self.device)
+            for *batch_xs, batch_y in loader:
+                batch_xs = [x.to(self.device) for x in batch_xs]
+                batch_y = batch_y.to(self.device)
+
                 optimizer.zero_grad()
-                logits = self.model(batch_x1, batch_x2)
+                logits = self.model(batch_xs)
                 loss = criterion(logits, batch_y)
                 loss.backward()
                 optimizer.step()
@@ -103,31 +109,38 @@ class IntermediateIntegrationWrapper:
 
         self.fitted = True
 
-    def predict(self, val_mod1: pd.DataFrame, val_mod2: pd.DataFrame) -> np.ndarray:
+    def predict(self, val_modalities: dict[str, pd.DataFrame]) -> np.ndarray:
         if not self.fitted:
             raise RuntimeError("Model must be fitted before predicting.")
 
-        x1_df, x2_df, _ = self.data(val_mod1, val_mod2)
-        x1 = torch.tensor(x1_df.values, dtype=torch.float32).to(self.device)
-        x2 = torch.tensor(x2_df.values, dtype=torch.float32).to(self.device)
+        x_dfs, _ = self.data(val_modalities)
+        x_tensors = [torch.tensor(x.values, dtype=torch.float32).to(self.device) for x in x_dfs]
 
         self.model.eval()
         with torch.no_grad():
-            logits = self.model(x1, x2)
+            logits = self.model(x_tensors)
             probs = torch.sigmoid(logits).cpu().numpy()
 
         return probs
 
+    def wrapper(self, train_modalities: dict[str, pd.DataFrame], val_modalities: dict[str, pd.DataFrame]) -> np.ndarray:
+        self.fit(train_modalities)
+        return self.predict(val_modalities)
+
 
 if __name__ == "__main__":
-    train_rna = pd.read_csv("../../../processed_data/train_rna.csv")
-    train_mirna = pd.read_csv("../../../processed_data/train_mir.csv")
-    val_rna = pd.read_csv("../../../processed_data/val_rna.csv")
-    val_mirna = pd.read_csv("../../../processed_data/val_mir.csv")
+    train_modalities = {
+        'rna': pd.read_csv("../../../processed_data/train_rna.csv"),
+        'mirna': pd.read_csv("../../../processed_data/train_mir.csv")
+    }
+
+    val_modalities = {
+        'rna': pd.read_csv("../../../processed_data/val_rna.csv"),
+        'mirna': pd.read_csv("../../../processed_data/val_mir.csv")
+    }
 
     model = IntermediateIntegrationWrapper()
-    model.fit(train_rna, train_mirna)
-    predictions = model.predict(val_rna, val_mirna)
-
-    performance = evaluate_model_on_preds(predictions, val_rna['subtype'])
+    predictions = model.wrapper(train_modalities, val_modalities)
+    performance = evaluate_model_on_preds(predictions, val_modalities['rna']['subtype'])
     print(performance)
+
