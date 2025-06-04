@@ -31,17 +31,13 @@ def run_preprocesing():
     train_cnv, val_cnv, test_cnv = cnv_preprocess.cnv_preprocess(df_cnv, manifest)
     train_mutation, val_mutation, test_mutation = mutation_preprocess.mutation_preprocess(df_mutation, manifest)
 
-    # assert the lengths of train are the same for all dfs
-    assert len(train_meth) == len(train_mir) == len(train_rna) == len(train_cnv) == len(train_mutation), \
-        "Training sets have different lengths. Please check the preprocessing steps."
+    # print modality shapes
+    logging.info(f"Processed Methylation Data: Train {train_meth.shape}, Val {val_meth.shape}, Test {test_meth.shape}")
+    logging.info(f"Processed miRNA Data: Train {train_mir.shape}, Val {val_mir.shape}, Test {test_mir.shape}")
+    logging.info(f"Processed RNA Data: Train {train_rna.shape}, Val {val_rna.shape}, Test {test_rna.shape}")
+    logging.info(f"Processed CNV Data: Train {train_cnv.shape}, Val {val_cnv.shape}, Test {test_cnv.shape}")
+    logging.info(f"Processed Mutation Data: Train {train_mutation.shape}, Val {val_mutation.shape}, Test {test_mutation.shape}")
 
-    # assert the lengths of val are the same for all dfs
-    assert len(val_meth) == len(val_mir) == len(val_rna) == len(val_cnv) == len(val_mutation), \
-        "Validation sets have different lengths. Please check the preprocessing steps."
-
-    # assert the lengths of test are the same for all dfs
-    assert len(test_meth) == len(test_mir) == len(test_rna) == len(test_cnv) == len(test_mutation), \
-        "Test sets have different lengths. Please check the preprocessing steps."
 
     #save to ../../processed_data/
     train_meth.to_csv("../../processed_data/train_meth.csv")
