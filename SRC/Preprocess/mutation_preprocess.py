@@ -1,3 +1,4 @@
+import pandas as pd
 def process_mutation_data(df_mut: pd.DataFrame, manifest:pd.DataFrame, gene_list: list = None) -> pd.DataFrame:
     """
     Process mutation data to extract features and counts.
@@ -10,6 +11,7 @@ def process_mutation_data(df_mut: pd.DataFrame, manifest:pd.DataFrame, gene_list
     Returns:
     pd.DataFrame: Processed DataFrame with mutation features.
     """
+    df_mut.set_index(df_mut.columns[0], inplace=True)
     df_mut = df_mut.merge(manifest, left_index=True, right_on='submitter_id.samples')
     df_mut = df_mut[df_mut['filter'] == 'PASS']
     if gene_list is not None:
