@@ -1,8 +1,13 @@
+import logging
+
 import pandas as pd
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
+from sklearn.svm import SVC
+
+logging.basicConfig(level=logging.INFO)
 
 
 def evaluate_model_on_preds(preds: np.ndarray, y_true: pd.Series) -> dict:
@@ -28,7 +33,7 @@ class LateIntegrationModel:
         """
         Initialize the late integration model with one model per modality.
         """
-        self.model_constructor = lambda: model if model else LogisticRegression(max_iter=1000)
+        self.model_constructor = lambda: model if model else SVC(probability=True, max_iter=1000, kernel='linear')
         self.models = {}  # Dict[str, BaseEstimator]
         self.fitted = False
 
@@ -44,6 +49,9 @@ class LateIntegrationModel:
         """
         Fit a model for each modality using its corresponding DataFrame.
         """
+
+        logging.info('Fitting complex late model...')
+
         self.models = {}
         for name, df in train_modalities.items():
             X, y = self.data(df)
@@ -82,13 +90,13 @@ class LateIntegrationModel:
 
 if __name__ == "__main__":
     train_modalities = {
-        'rna': pd.read_csv("../../processed_data/train_rna.csv"),
-        'mirna': pd.read_csv("../../processed_data/train_mir.csv")
+        'rna': pd.read_csv("../../../processed_data/train_rna.csv"),
+        'mirna': pd.read_csv("../../../processed_data/train_mir.csv")
     }
 
     val_modalities = {
-        'rna': pd.read_csv("../../processed_data/val_rna.csv"),
-        'mirna': pd.read_csv("../../processed_data/val_mir.csv")
+        'rna': pd.read_csv("../../../processed_data/val_rna.csv"),
+        'mirna': pd.read_csv("../../../processed_data/val_mir.csv")
     }
 
     model = LateIntegrationModel()

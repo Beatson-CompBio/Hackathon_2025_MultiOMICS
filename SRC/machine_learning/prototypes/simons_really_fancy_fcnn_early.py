@@ -97,11 +97,11 @@ class Early_or_Single_Model:
 # --- Example usage ---
 
 if __name__ == "__main__":
-    train_rna = pd.read_csv("../../processed_data/train_rna.csv")
-    train_mirna = pd.read_csv("../../processed_data/train_mir.csv")
+    train_rna = pd.read_csv("../../../processed_data/train_rna.csv")
+    train_mirna = pd.read_csv("../../../processed_data/train_mir.csv")
 
-    val_rna = pd.read_csv("../../processed_data/val_rna.csv")
-    val_mirna = pd.read_csv("../../processed_data/val_mir.csv")
+    val_rna = pd.read_csv("../../../processed_data/val_rna.csv")
+    val_mirna = pd.read_csv("../../../processed_data/val_mir.csv")
 
     model = Early_or_Single_Model()
     predictions = model.wrapper([train_rna, train_mirna], [val_rna, val_mirna])

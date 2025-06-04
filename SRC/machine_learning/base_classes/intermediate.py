@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
 
 
-# --- Evaluation function ---
 def evaluate_model_on_preds(preds: np.ndarray, y_true: pd.Series) -> dict:
     if preds.ndim == 1:
         preds = preds.reshape(-1, 1)
@@ -120,12 +119,11 @@ class IntermediateIntegrationWrapper:
         return probs
 
 
-# --- Example usage ---
 if __name__ == "__main__":
-    train_rna = pd.read_csv("../../processed_data/train_rna.csv")
-    train_mirna = pd.read_csv("../../processed_data/train_mir.csv")
-    val_rna = pd.read_csv("../../processed_data/val_rna.csv")
-    val_mirna = pd.read_csv("../../processed_data/val_mir.csv")
+    train_rna = pd.read_csv("../../../processed_data/train_rna.csv")
+    train_mirna = pd.read_csv("../../../processed_data/train_mir.csv")
+    val_rna = pd.read_csv("../../../processed_data/val_rna.csv")
+    val_mirna = pd.read_csv("../../../processed_data/val_mir.csv")
 
     model = IntermediateIntegrationWrapper()
     model.fit(train_rna, train_mirna)
