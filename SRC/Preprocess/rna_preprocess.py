@@ -23,6 +23,11 @@ def rna_preprocess(input_df: pd.DataFrame, manifest: pd.DataFrame, gene_names_di
     df = df.drop(['Gene stable ID', 'Gene stable ID version', 'Transcript stable ID', 'Transcript stable ID version'],
                  axis=1)
     df = df.T
+    #if gene list not false filter cols to gene list
+    if gene_list is not False:
+        cols = [col for col in df.columns if col in gene_list or col in ['submitter_id.samples', 'subtype', 'split']]
+        df = df[cols]
+
     df_merge = df.merge(manifest, left_index=True, right_on='submitter_id.samples', how='inner')
 
     train_df = df_merge[df_merge['split'] == 'train']

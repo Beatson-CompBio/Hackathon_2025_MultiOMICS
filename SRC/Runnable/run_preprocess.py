@@ -2,16 +2,20 @@ import logging
 
 import pandas as pd
 
-from SRC.Preprocess import cnv_preprocess, rna_preprocess, meth_preprocess, mirna_preprocess, mutation_preprocess
+from SRC.Preprocess import cnv_preprocess, rna_preprocess, meth_preprocess, mirna_preprocess, mutation_preprocess, hist_preprocess
 
 logging.basicConfig(level=logging.INFO)
 
-def run_preprocesing():
+def run_preprocesing(histology=True):
     """
     Run preprocessing for all omics data.
     """
 
-    logging.info("Running preprocessing for all omics data.")
+    if histology:
+        logging.info("Running preprocessing for all omics data including histology.")
+
+    else:
+        logging.info("Running preprocessing for all omics data without histology.")
 
     # Load data
     df_meth = pd.read_csv("../../data/TCGA-BRCA.methylation450.tsv", sep="\t")
@@ -19,6 +23,8 @@ def run_preprocesing():
     df_rna = pd.read_csv("../../data/TCGA-BRCA.htseq_counts.tsv", sep="\t")
     df_cnv = pd.read_csv("../../data/TCGA-BRCA.gistic.tsv", sep="\t")
     df_mutation = pd.read_csv("../../data/TCGA-BRCA.mutect2_snv.tsv", sep="\t")
+    histology_filepath = r"C:\Projects\Notebook_sandbox\hackathon\wsi\pngs_and_masks"
+    #histology_filepath = r"C:\Projects\Notebook_sandbox\hackathon\wsi\test_dir"
 
     manifest = pd.read_csv("../../data/hackathon_manifest.csv")
 
@@ -30,6 +36,7 @@ def run_preprocesing():
     train_rna, val_rna, test_rna = rna_preprocess.rna_preprocess(df_rna, manifest, gene_names_dict)
     train_cnv, val_cnv, test_cnv = cnv_preprocess.cnv_preprocess(df_cnv, manifest)
     train_mutation, val_mutation, test_mutation = mutation_preprocess.mutation_preprocess(df_mutation, manifest)
+    train_hist, val_hist, test_hist = hist_preprocess.histology_preprocess(histology_filepath, manifest, tile_size=224)
 
     # print modality shapes
     #get the intersection of all submitter_id.samples for train, val, and test sets
@@ -38,22 +45,33 @@ def run_preprocesing():
         set(train_mir['submitter_id.samples']),
         set(train_rna['submitter_id.samples']),
         set(train_cnv['submitter_id.samples']),
-        set(train_mutation['submitter_id.samples'])
+        set(train_mutation['submitter_id.samples']),
     )
+
+    if histology:
+        train_intersection_ids = train_intersection_ids.intersection(set(train_hist['submitter_id.samples']))
 
     val_intersection_ids = set(val_meth['submitter_id.samples']).intersection(
         set(val_mir['submitter_id.samples']),
         set(val_rna['submitter_id.samples']),
         set(val_cnv['submitter_id.samples']),
-        set(val_mutation['submitter_id.samples'])
+        set(val_mutation['submitter_id.samples']),
+        set(val_hist['submitter_id.samples'])
     )
+
+    if histology:
+        val_intersection_ids = val_intersection_ids.intersection(set(val_hist['submitter_id.samples']))
 
     test_intersection_ids = set(test_meth['submitter_id.samples']).intersection(
         set(test_mir['submitter_id.samples']),
         set(test_rna['submitter_id.samples']),
         set(test_cnv['submitter_id.samples']),
-        set(test_mutation['submitter_id.samples'])
+        set(test_mutation['submitter_id.samples']),
+        set(test_hist['submitter_id.samples'])
     )
+
+    if histology:
+        test_intersection_ids = test_intersection_ids.intersection(set(test_hist['submitter_id.samples']))
 
     logging.info(f"Train set intersection IDs: {len(train_intersection_ids)}")
     logging.info(f"Validation set intersection IDs: {len(val_intersection_ids)}")
@@ -80,10 +98,21 @@ def run_preprocesing():
     val_mutation = val_mutation[val_mutation['submitter_id.samples'].isin(val_intersection_ids)]
     test_mutation = test_mutation[test_mutation['submitter_id.samples'].isin(test_intersection_ids)]
 
-    #assert that the number of samples in each modality is the same
-    assert len(train_meth) == len(train_mir) == len(train_rna) == len(train_cnv) == len(train_mutation), "Train sets do not match in size"
-    assert len(val_meth) == len(val_mir) == len(val_rna) == len(val_cnv) == len(val_mutation), "Validation sets do not match in size"
-    assert len(test_meth) == len(test_mir) == len(test_rna) == len(test_cnv) == len(test_mutation), "Test sets do not match in size"
+    if histology:
+
+        train_hist = train_hist[train_hist['submitter_id.samples'].isin(train_intersection_ids)]
+        val_hist = val_hist[val_hist['submitter_id.samples'].isin(val_intersection_ids)]
+        test_hist = test_hist[test_hist['submitter_id.samples'].isin(test_intersection_ids)]
+
+    if histology:
+        assert len(train_meth) == len(train_mir) == len(train_rna) == len(train_cnv) == len(train_mutation) ==len(train_hist), "Train sets do not match in size"
+        assert len(val_meth) == len(val_mir) == len(val_rna) == len(val_cnv) == len(val_mutation) ==len(val_hist), "Validation sets do not match in size"
+        assert len(test_meth) == len(test_mir) == len(test_rna) == len(test_cnv) == len(test_mutation) ==len(test_hist),"Test sets do not match in size"
+
+    else:
+        assert len(train_meth) == len(train_mir) == len(train_rna) == len(train_cnv) == len(train_mutation), "Train sets do not match in size"
+        assert len(val_meth) == len(val_mir) == len(val_rna) == len(val_cnv) == len(val_mutation), "Validation sets do not match in size"
+        assert len(test_meth) == len(test_mir) == len(test_rna) == len(test_cnv) == len(test_mutation),"Test sets do not match in size"
 
     #save to ../../processed_data/
     train_meth.to_csv("../../processed_data/train_meth.csv")
@@ -106,7 +135,13 @@ def run_preprocesing():
     val_mutation.to_csv("../../processed_data/val_mutation.csv")
     test_mutation.to_csv("../../processed_data/test_mutation.csv")
 
+    if histology:
+
+        train_hist.to_csv("../../processed_data/train_hist.csv")
+        val_hist.to_csv("../../processed_data/val_hist.csv")
+        test_hist.to_csv("../../processed_data/test_hist.csv")
+
     logging.info("Preprocessing completed and results saved to ../../processed_data/")
 
 if __name__ == "__main__":
-    run_preprocesing()
+    run_preprocesing(histology=True)
