@@ -87,18 +87,23 @@ class Early_or_Single_Model:
 if __name__ == "__main__":
 
     train_modalities = {
-        'rna': pd.read_csv("../../../processed_data/train_rna.csv"),
-        'mirna': pd.read_csv("../../../processed_data/train_mir.csv")
+        #'rna': pd.read_csv("../../../processed_data/train_rna.csv"),
+        #'mirna': pd.read_csv("../../../processed_data/train_mir.csv"),
+        #drop first coolumn from meth using iloc
+        'cnv': pd.read_csv("../../../processed_data/train_cnv.csv"),
+        #'meth': pd.read_csv("../../../processed_data/train_meth.csv")
     }
 
     val_modalities = {
-        'rna': pd.read_csv("../../../processed_data/val_rna.csv"),
-        'mirna': pd.read_csv("../../../processed_data/val_mir.csv")
+        #'rna': pd.read_csv("../../../processed_data/val_rna.csv"),
+        #'mirna': pd.read_csv("../../../processed_data/val_mir.csv"),
+        'cnv': pd.read_csv("../../../processed_data/val_cnv.csv"),
+        #'meth': pd.read_csv("../../../processed_data/val_meth.csv")
     }
 
     model = Early_or_Single_Model()
     predictions = model.wrapper(train_modalities, val_modalities)
 
-    performance = evaluate_model_on_preds(predictions, val_modalities['rna']['subtype'])
+    performance = evaluate_model_on_preds(predictions, val_modalities['cnv']['subtype'])
 
     print(performance)
