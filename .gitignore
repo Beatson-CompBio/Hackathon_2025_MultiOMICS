@@ -1,0 +1,10 @@
+
+__pycache__/
+data/
+processed_data/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.pkl.gz
+*.ipynb_checkpoints
