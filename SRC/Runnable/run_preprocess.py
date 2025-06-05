@@ -23,6 +23,7 @@ def run_preprocesing(histology=False):
     df_rna = pd.read_csv("../../data/TCGA-BRCA.htseq_counts.tsv", sep="\t")
     df_cnv = pd.read_csv("../../data/TCGA-BRCA.gistic.tsv", sep="\t")
     df_mutation = pd.read_csv("../../data/TCGA-BRCA.mutect2_snv.tsv", sep="\t")
+    df_histology = pd.read_csv("../../data/he.csv")
     histology_filepath = r"C:\Projects\Notebook_sandbox\hackathon\wsi\pngs_and_masks"
     #histology_filepath = r"C:\Projects\Notebook_sandbox\hackathon\wsi\test_dir"
 
@@ -36,7 +37,7 @@ def run_preprocesing(histology=False):
     train_rna, val_rna, test_rna = rna_preprocess.rna_preprocess(df_rna, manifest, gene_names_dict)
     train_cnv, val_cnv, test_cnv = cnv_preprocess.cnv_preprocess(df_cnv, manifest)
     train_mutation, val_mutation, test_mutation = mutation_preprocess.mutation_preprocess(df_mutation, manifest)
-    train_hist, val_hist, test_hist = hist_preprocess.histology_preprocess(histology_filepath, manifest, tile_size=224)
+    train_hist, val_hist, test_hist = hist_preprocess.foundation_histology_preprocess(df_histology, manifest)
 
     # print modality shapes
     #get the intersection of all submitter_id.samples for train, val, and test sets
@@ -144,4 +145,4 @@ def run_preprocesing(histology=False):
     logging.info("Preprocessing completed and results saved to ../../processed_data/")
 
 if __name__ == "__main__":
-    run_preprocesing(histology=False)
+    run_preprocesing(histology=True)
