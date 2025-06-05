@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
+from sklearn.feature_selection import SelectKBest, f_classif, chi2, RFE, mutual_info_classif
 
 logging.basicConfig(level=logging.INFO)
 
@@ -29,15 +30,19 @@ def evaluate_model_on_preds(preds: np.ndarray, y_true: pd.Series) -> dict:
         'f1': f1
     }
 
-from sklearn.feature_selection import SelectKBest, f_classif
 
 class Early_or_Single_Model:
-    def __init__(self, model: BaseEstimator = None, feature_selector=None):
+    def __init__(self, model: BaseEstimator = None, feature_selector=None, k= 50, score_func=f_classif):
         """
         Initialize with an optional estimator and feature selector.
         """
         self.model = model if model else LogisticRegression(max_iter=1000)
-        self.feature_selector = feature_selector if feature_selector else SelectKBest(score_func=f_classif, k=10)
+        self.k = k
+        self.score_func = score_func
+        # for (int k=1; k < 100 ; k++) {
+        #
+        # }
+        self.feature_selector = feature_selector if feature_selector else SelectKBest(score_func=self.score_func, k=self.k)
         self.fitted = False
 
     def data(self, modality_dfs: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.Series]:
@@ -102,9 +107,20 @@ if __name__ == "__main__":
         #'meth': pd.read_csv("../../../processed_data/val_meth.csv")
     }
 
-    model = Early_or_Single_Model()
-    predictions = model.wrapper(train_modalities, val_modalities)
+    # model = Early_or_Single_Model(k=50)
+    # predictions = model.wrapper(train_modalities, val_modalities)
+    #
+    # performance = evaluate_model_on_preds(predictions, val_modalities['hist']['subtype'])
+    #
+    # print(performance)
 
-    performance = evaluate_model_on_preds(predictions, val_modalities['hist']['subtype'])
+    score_functions = [f_classif, mutual_info_classif, ]
 
-    print(performance)
+    for k in [20, 50, 100, 200]:
+        for score_func in score_functions:
+            logging.info(f"Running Early_or_Single_Model with k={k} and score_func={score_func.__name__}")
+            model = Early_or_Single_Model(k=k, score_func=score_func)
+
+            predictions = model.wrapper(train_modalities, val_modalities)
+            performance = evaluate_model_on_preds(predictions, val_modalities['hist']['subtype'])
+            logging.info(f"Performance with k={k}, score_func={score_func.__name__}: {performance}")
