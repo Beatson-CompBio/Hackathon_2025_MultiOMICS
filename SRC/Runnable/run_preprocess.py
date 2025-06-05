@@ -6,7 +6,7 @@ from SRC.Preprocess import cnv_preprocess, rna_preprocess, meth_preprocess, mirn
 
 logging.basicConfig(level=logging.INFO)
 
-def run_preprocesing(histology=True):
+def run_preprocesing(histology=False):
     """
     Run preprocessing for all omics data.
     """
@@ -144,4 +144,4 @@ def run_preprocesing(histology=True):
     logging.info("Preprocessing completed and results saved to ../../processed_data/")
 
 if __name__ == "__main__":
-    run_preprocesing(histology=True)
+    run_preprocesing(histology=False)

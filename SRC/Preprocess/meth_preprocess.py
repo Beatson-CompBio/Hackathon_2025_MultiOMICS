@@ -26,18 +26,24 @@ def process_methylation_data(df_meth: pd.DataFrame, manifest: pd.DataFrame, gene
     train_df = pd.DataFrame(meth_features_train, index=train_df['submitter_id.samples'])
     train_df['subtype'] = df_meth[df_meth['split'] == 'train']['subtype'].values
     train_df['submitter_id.samples'] = train_df.index
+    # Reset index to ints
+    train_df.reset_index(drop=True, inplace=True)
 
     val_df = df_meth[df_meth['split'] == 'val'].drop(columns=['split'])
     meth_features_val = pca.transform(val_df.drop(columns=['submitter_id.samples', 'subtype']))
     val_df = pd.DataFrame(meth_features_val, index=val_df['submitter_id.samples'])
     val_df['subtype'] = df_meth[df_meth['split'] == 'val']['subtype'].values
     val_df['submitter_id.samples'] = val_df.index
+    # Reset index to ints
+    val_df.reset_index(drop=True, inplace=True)
 
     test_df = df_meth[df_meth['split'] == 'test'].drop(columns=['split'])
     meth_features_test = pca.transform(test_df.drop(columns=['submitter_id.samples', 'subtype']))
     test_df = pd.DataFrame(meth_features_test, index=test_df['submitter_id.samples'])
     test_df['subtype'] = df_meth[df_meth['split'] == 'test']['subtype'].values
     test_df['submitter_id.samples'] = test_df.index
+    # Reset index to ints
+    test_df.reset_index(drop=True, inplace=True)
 
     return train_df, val_df, test_df
 
