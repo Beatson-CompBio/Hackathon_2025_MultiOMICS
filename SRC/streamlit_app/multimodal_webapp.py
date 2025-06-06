@@ -270,9 +270,13 @@ class LateIntegrationModel:
 st.set_page_config(page_title="Multimodal Model App", layout="wide")
 st.title('🧬 My Cool Multimodal Webapp')
 
-tab1, tab2, tab3, tab4 = st.tabs(["📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "Patient Inference"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(['Landing PAge',"📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "Patient Inference"])
 
 with tab1:
+    st.title('hello')
+    st.text('this is text')
+
+with tab2:
     # read in meth train
     st.subheader("Exploratory Data Analysis")
     st.write("This tab is for exploratory data analysis. You can visualize and explore the data here.")
@@ -315,7 +319,7 @@ with tab1:
         st.altair_chart(scatter, use_container_width=True)
 
 # --- Tab 1: Model Training ---
-with tab2:
+with tab3:
     possible_train_modalities = {
         'rna': "../../processed_data/train_rna.csv",
         'mirna': "../../processed_data/train_mir.csv",
@@ -471,7 +475,7 @@ with tab2:
             st.altair_chart(late_bar, use_container_width=True)
 
 # --- Tab 2: Histology Viewer ---
-with tab3:
+with tab4:
     st.subheader("🧫 Histology Image Viewer")
     uploaded_image = st.file_uploader("Upload a Histology Image (PNG)", type=["png"])
 
@@ -480,7 +484,7 @@ with tab3:
     else:
         st.info("Please upload a .png file to view the histology image.")
 
-with tab4:
+with tab5:
     patient_ids = [f'Patient_{i}' for i in range(1, 31)]
     probabilities = np.random.beta(a=0.5, b=0.5, size=len(patient_ids))
 
