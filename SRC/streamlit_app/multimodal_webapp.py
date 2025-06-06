@@ -282,7 +282,7 @@ def load_csv(path):
 
 # === TABS ===
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    '🧬 Project Page', "📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "🚑 Patient Inference"
+    '🧬 Project Page', "📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology Image Viewer", "🚑 Patient Inference"
 ])
 
 # === TAB 1: Project Overview ===
