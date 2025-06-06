@@ -450,6 +450,10 @@ with tab3:
         # intermediate integration model (Just performances, no coefficients)
         st.subheader("🔍 Intermediate Integration Model - Performance")
         st.write('Validation F1 Score:', st.session_state.intermediate_performance['f1'])
+
+        if 'train_modalities' not in st.session_state:
+            st.session_state.train_modalities = {} # Or your initial default value
+        
         st.write("**Intermediate Integration - Modalities in Data:**", list(train_modalities.keys()))
 
         # Late Integration Model Coefficients - Separate graphs for each modality
