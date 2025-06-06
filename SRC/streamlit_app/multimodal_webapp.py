@@ -24,7 +24,7 @@ def evaluate_model_on_preds(preds: np.ndarray, y_true: pd.Series) -> dict:
 
     auc = roc_auc_score(y_true, preds)
     accuracy = accuracy_score(y_true, np.round(preds))
-    f1 = f1_score(y_true, np.round(preds))
+    f1 = f1_score(y_true, np.round(preds), average="weighted")
 
     return {'auc': auc, 'accuracy': accuracy, 'f1': f1}
 
@@ -269,7 +269,7 @@ class LateIntegrationModel:
 st.set_page_config(page_title="Multimodal Model App", layout="wide")
 st.title('🧬 My Cool Multimodal Webapp')
 
-tab1, tab2, tab3 = st.tabs(["📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology"])
+tab1, tab2, tab3, tab4 = st.tabs(["📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "Patient Inference"])
 
 with tab1:
     # read in meth train
@@ -348,9 +348,24 @@ with tab2:
         default=['mirna', 'meth', 'cnv']
     )
 
-    if 'coef_df' not in st.session_state:
-        st.session_state.coef_df = None
-        st.session_state.performance = None
+    # Initialize session state for both models
+    if 'early_coef_df' not in st.session_state:
+        st.session_state.early_coef_df = None
+        
+    if 'early_performance' not in st.session_state:
+        st.session_state.early_performance = None
+        
+    if 'late_coef_df' not in st.session_state:
+        st.session_state.late_coef_df = None
+        
+    if 'late_performance' not in st.session_state:
+        st.session_state.late_performance = None
+        
+    if 'early_test_performance' not in st.session_state:
+        st.session_state.early_test_performance = None
+        
+    if 'late_test_performance' not in st.session_state:
+        st.session_state.late_test_performance = None
 
     if st.button(f'Train and Predict on {selected_modalities}'):
         with st.spinner('Loading data...'):
@@ -361,73 +376,66 @@ with tab2:
             val_modalities = {k: pd.read_csv(possible_val_modalities[k]) for k in selected_modalities}
             test_modalities = {k: pd.read_csv(possible_test_modalities[k]) for k in selected_modalities}
 
-        with st.spinner('Training model...'):
-            model = Early_or_Single_Model()
-            predictions, coef_df, test_set_predictions = model.wrapper(train_modalities, val_modalities, test_modalities)
-            val_performance = evaluate_model_on_preds(predictions, val_modalities[selected_modalities[0]]['subtype'])
-            test_performance = evaluate_model_on_preds(test_set_predictions, test_modalities[selected_modalities[0]]['subtype'])
-            st.success('Model trained successfully!')
-
-            st.write('Validation F1 Score:', val_performance['f1'])
-
-            #if st.button('Show Test Set Predictions'):
-            st.warning('Test set predictions should only be viewed once at the end of the project')
-            #have a dropdown to show test?
-            st.write('Test F1 Score:', test_performance['f1'])
-
-            """
-            model = IntermediateIntegrationWrapper()
-            predictions, coef_df, test_set_predictions = model.wrapper(train_modalities, val_modalities, test_modalities)
-            val_performance = evaluate_model_on_preds(predictions, val_modalities[selected_modalities[0]]['subtype'])
-            test_performance = evaluate_model_on_preds(test_set_predictions, test_modalities[selected_modalities[0]]['subtype'])
-            st.success('Model trained successfully!')
-
-            st.write('Validation F1 Score:', val_performance['f1'])
-
-            #if st.button('Show Test Set Predictions'):
-            st.warning('Test set predictions should only be viewed once at the end of the project')
-            #have a dropdown to show test?
-            st.write('Test F1 Score:', test_performance['f1'])
-            """
+        # Train Early/Single Model
+        with st.spinner('Training Early/Single Integration model...'):
+            early_model = Early_or_Single_Model()
+            early_predictions, early_coef_df, early_test_predictions = early_model.wrapper(train_modalities, val_modalities, test_modalities)
+            early_val_performance = evaluate_model_on_preds(early_predictions, val_modalities[selected_modalities[0]]['subtype'])
+            early_test_performance = evaluate_model_on_preds(early_test_predictions, test_modalities[selected_modalities[0]]['subtype'])
+            
+            st.success('Early/Single Integration model trained successfully!')
             
 
+        # Train Late Integration Model
+        with st.spinner('Training Late Integration model...'):
             late_model = LateIntegrationModel()
-            predictions, coef_df, test_set_predictions = late_model.wrapper(train_modalities, val_modalities, test_modalities)
-            val_performance = evaluate_model_on_preds(predictions, val_modalities[selected_modalities[0]]['subtype'])
-            test_performance = evaluate_model_on_preds(test_set_predictions, test_modalities[selected_modalities[0]]['subtype'])
-            st.success('Model trained successfully!')
+            late_predictions, late_coef_df, late_test_predictions = late_model.wrapper(train_modalities, val_modalities, test_modalities)
+            late_val_performance = evaluate_model_on_preds(late_predictions, val_modalities[selected_modalities[0]]['subtype'])
+            late_test_performance = evaluate_model_on_preds(late_test_predictions, test_modalities[selected_modalities[0]]['subtype'])
+            
+            st.success('Late Integration model trained successfully!')
+        
 
-            st.write('Validation F1 Score:', val_performance['f1'])
+        # Store results in session state
+        st.session_state.early_coef_df = early_coef_df
+        st.session_state.early_performance = early_val_performance
+        st.session_state.early_test_performance = early_test_performance
+        st.session_state.late_coef_df = late_coef_df
+        st.session_state.late_performance = late_val_performance
+        st.session_state.late_test_performance = late_test_performance
 
-            #if st.button('Show Test Set Predictions'):
-            st.warning('Test set predictions should only be viewed once at the end of the project')
-            #have a dropdown to show test?
-            st.write('Test F1 Score:', test_performance['f1'])
-        st.session_state.coef_df = coef_df
-        #st.session_state.val_performance = val_performance
+    # Display coefficient graphs for both models
+    if st.session_state.early_coef_df is not None and st.session_state.late_coef_df is not None:
+        
+        num_features = st.slider("Select number of features to display", min_value=10, max_value=2000, value=200, step=10)
 
-
-
-
-    if st.session_state.coef_df is not None:
-        # st.write('Validation F1 Score:', st.session_state.val_performance['f1'])
-        #
-        # if st.button('Show Test Set Predictions'):
-        #     st.warning('Test set predictions should only be viewed once at the end of the project')
-        #     st.write('Test Set Predictions:', test_performance['f1'])
-
-        num_features = st.slider("Select number of features to display", min_value=10, max_value=2000, value=100, step=10)
-
-        display_df = st.session_state.coef_df.head(num_features)
-        st.write("Modalities in Data:", display_df['modality'].unique())
-        st.subheader("🔍 Important Features by Coefficient")
-        bar = alt.Chart(display_df).mark_bar().encode(
+        # Early/Single Integration Model Coefficients
+        st.subheader("🔍 Early/Single Integration Model - Important Features by Coefficient")
+        st.write('Validation F1 Score:', st.session_state.early_performance['f1'])
+        early_display_df = st.session_state.early_coef_df.head(num_features)
+        st.write("**Early/Single Integration - Modalities in Data:**", early_display_df['modality'].unique())
+        
+        early_bar = alt.Chart(early_display_df).mark_bar().encode(
             x=alt.X('coefficient:Q', title='Logistic Regression Coefficient'),
             y=alt.Y('feature:N', sort='-x', title='Feature'),
             color=alt.Color('modality:N', title='Modality'),
             tooltip=['feature', 'coefficient', 'modality']
         ).properties(height=900)
-        st.altair_chart(bar, use_container_width=True)
+        st.altair_chart(early_bar, use_container_width=True)
+
+        # Late Integration Model Coefficients
+        st.subheader("🔍 Late Integration Model - Important Features by Coefficient")
+        st.write('Validation F1 Score:', st.session_state.late_performance['f1'])
+        late_display_df = st.session_state.late_coef_df.head(num_features)
+        st.write("**Late Integration - Modalities in Data:**", late_display_df['modality'].unique())
+        
+        late_bar = alt.Chart(late_display_df).mark_bar().encode(
+            x=alt.X('coefficient:Q', title='Logistic Regression Coefficient'),
+            y=alt.Y('feature:N', sort='-x', title='Feature'),
+            color=alt.Color('modality:N', title='Modality'),
+            tooltip=['feature', 'coefficient', 'modality']
+        ).properties(height=900)
+        st.altair_chart(late_bar, use_container_width=True)
 
 # --- Tab 2: Histology Viewer ---
 with tab3:
@@ -438,5 +446,30 @@ with tab3:
         st.image(uploaded_image, caption="Uploaded Histology Slide", use_column_width=True)
     else:
         st.info("Please upload a .png file to view the histology image.")
+
+with tab4:
+    patient_ids = [f'Patient_{i}' for i in range(1, 31)]
+    probabilities = np.random.beta(a=0.5, b=0.5, size=len(patient_ids))
+
+    # Dropdown to select a patient
+    selected_patient = st.selectbox("🔍 Select a Patient", patient_ids)
+    selected_probability = probabilities[patient_ids.index(selected_patient)]
+    patient_class = "Ductal" if selected_probability > 0.5 else "Lobular"
+    confidence = "High" if selected_probability < 0.2 or selected_probability > 0.8 else "Low"
+    
+    # Title
+    st.subheader(f"🧬 Results for {selected_patient}")
+
+    # Layout in columns
+    col1, col2, col3 = st.columns(3)
+    col1.metric("🧪 Predicted Probability", f"{selected_probability:.2f}")
+    col2.metric("🧬 Predicted Class", patient_class)
+    col3.metric("🎯 Confidence", confidence)
+
+    # Optional extra formatting
+    if confidence == "High":
+        st.success("✅ High confidence in prediction")
+    else:
+        st.warning("⚠️ Prediction is uncertain (low confidence)")
 
 
