@@ -242,14 +242,14 @@ class LateIntegrationModel:
     def wrapper(self, train_modalities: dict[str, pd.DataFrame],
             val_modalities: dict[str, pd.DataFrame],
             test_modalities: dict[str, pd.DataFrame]
-           ) -> tuple[np.ndarray, pd.DataFrame, np.ndarray]:
+           ) -> tuple[np.ndarray, dict, np.ndarray]:
 
         self.fit(train_modalities)
         preds = self.predict(val_modalities)
         test_set_preds = self.predict(test_modalities)
 
         # Coefficient extraction from each modality-specific model
-        coef_dfs = []
+        coef_dict = {}
         for modality, model in self.models.items():
             if hasattr(model, "coef_"):
                 X, _ = self.data(train_modalities[modality])
@@ -257,11 +257,9 @@ class LateIntegrationModel:
                 df = coefs.abs().sort_values(ascending=False).head(500).reset_index()
                 df.columns = ['feature', 'coefficient']
                 df['modality'] = modality
-                coef_dfs.append(df)
+                coef_dict[modality] = df
 
-        coef_df = pd.concat(coef_dfs, ignore_index=True) if coef_dfs else pd.DataFrame(columns=['feature', 'coefficient', 'modality'])
-
-        return preds, coef_df, test_set_preds
+        return preds, coef_dict, test_set_preds
 
 
 # --- Streamlit Interface with Tabs ---
@@ -355,8 +353,8 @@ with tab2:
     if 'early_performance' not in st.session_state:
         st.session_state.early_performance = None
         
-    if 'late_coef_df' not in st.session_state:
-        st.session_state.late_coef_df = None
+    if 'late_coef_dict' not in st.session_state:
+        st.session_state.late_coef_dict = None
         
     if 'late_performance' not in st.session_state:
         st.session_state.late_performance = None
@@ -389,7 +387,7 @@ with tab2:
         # Train Late Integration Model
         with st.spinner('Training Late Integration model...'):
             late_model = LateIntegrationModel()
-            late_predictions, late_coef_df, late_test_predictions = late_model.wrapper(train_modalities, val_modalities, test_modalities)
+            late_predictions, late_coef_dict, late_test_predictions = late_model.wrapper(train_modalities, val_modalities, test_modalities)
             late_val_performance = evaluate_model_on_preds(late_predictions, val_modalities[selected_modalities[0]]['subtype'])
             late_test_performance = evaluate_model_on_preds(late_test_predictions, test_modalities[selected_modalities[0]]['subtype'])
             
@@ -400,12 +398,12 @@ with tab2:
         st.session_state.early_coef_df = early_coef_df
         st.session_state.early_performance = early_val_performance
         st.session_state.early_test_performance = early_test_performance
-        st.session_state.late_coef_df = late_coef_df
+        st.session_state.late_coef_dict = late_coef_dict
         st.session_state.late_performance = late_val_performance
         st.session_state.late_test_performance = late_test_performance
 
     # Display coefficient graphs for both models
-    if st.session_state.early_coef_df is not None and st.session_state.late_coef_df is not None:
+    if st.session_state.early_coef_df is not None and st.session_state.late_coef_dict is not None:
         
         num_features = st.slider("Select number of features to display", min_value=10, max_value=2000, value=200, step=10)
 
@@ -423,19 +421,27 @@ with tab2:
         ).properties(height=900)
         st.altair_chart(early_bar, use_container_width=True)
 
-        # Late Integration Model Coefficients
-        st.subheader("🔍 Late Integration Model - Important Features by Coefficient")
+        # Late Integration Model Coefficients - Separate graphs for each modality
+        st.subheader("🔍 Late Integration Model - Important Features by Coefficient (Per Modality)")
         st.write('Validation F1 Score:', st.session_state.late_performance['f1'])
-        late_display_df = st.session_state.late_coef_df.head(num_features)
-        st.write("**Late Integration - Modalities in Data:**", late_display_df['modality'].unique())
         
-        late_bar = alt.Chart(late_display_df).mark_bar().encode(
-            x=alt.X('coefficient:Q', title='Logistic Regression Coefficient'),
-            y=alt.Y('feature:N', sort='-x', title='Feature'),
-            color=alt.Color('modality:N', title='Modality'),
-            tooltip=['feature', 'coefficient', 'modality']
-        ).properties(height=900)
-        st.altair_chart(late_bar, use_container_width=True)
+        for modality, coef_df in st.session_state.late_coef_dict.items():
+            st.write(f"**🧬 {modality.upper()} Modality**")
+            
+            # Get top features for this modality
+            modality_display_df = coef_df.head(num_features)
+            
+            # Create chart for this modality
+            late_bar = alt.Chart(modality_display_df).mark_bar(color=alt.expr("datum.modality === 'rna' ? '#1f77b4' : datum.modality === 'mirna' ? '#ff7f0e' : datum.modality === 'cnv' ? '#2ca02c' : datum.modality === 'meth' ? '#d62728' : datum.modality === 'histology' ? '#9467bd' : '#8c564b'")).encode(
+                x=alt.X('coefficient:Q', title=f'Logistic Regression Coefficient ({modality})'),
+                y=alt.Y('feature:N', sort='-x', title='Feature'),
+                tooltip=['feature', 'coefficient', 'modality']
+            ).properties(
+                height=600,
+                title=f"Top {len(modality_display_df)} Features for {modality.upper()} Modality"
+            )
+            
+            st.altair_chart(late_bar, use_container_width=True)
 
 # --- Tab 2: Histology Viewer ---
 with tab3:
@@ -471,5 +477,3 @@ with tab4:
         st.success("✅ High confidence in prediction")
     else:
         st.warning("⚠️ Prediction is uncertain (low confidence)")
-
-
