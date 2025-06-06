@@ -185,9 +185,6 @@ class IntermediateIntegrationWrapper:
 
         return probs
 
-    # def wrapper(self, train_modalities: dict[str, pd.DataFrame], val_modalities: dict[str, pd.DataFrame], test_modalities: dict[str, pd.DataFrame]) -> np.ndarray:
-    #     self.fit(train_modalities)
-    #     return self.predict(val_modalities)
     def wrapper(self, train_modalities: dict[str, pd.DataFrame], val_modalities: dict[str, pd.DataFrame], test_modalities: dict[str, pd.DataFrame]) -> tuple[np.ndarray, pd.DataFrame, np.ndarray]:
         X_train = self.fit(train_modalities)
         preds = self.predict(val_modalities)  # For coefficient analysis
