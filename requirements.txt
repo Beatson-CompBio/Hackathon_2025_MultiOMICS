@@ -6,3 +6,4 @@ torch
 torchvision
 streamlit
 plotly
+altair
