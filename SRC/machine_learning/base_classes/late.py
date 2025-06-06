@@ -90,12 +90,14 @@ class LateIntegrationModel:
 if __name__ == "__main__":
     train_modalities = {
         'rna': pd.read_csv("../../../processed_data/train_rna.csv"),
-        'mirna': pd.read_csv("../../../processed_data/train_mir.csv")
+        'mirna': pd.read_csv("../../../processed_data/train_mir.csv"),
+        'meth': pd.read_csv("../../../processed_data/train_meth.csv"),
     }
 
     val_modalities = {
         'rna': pd.read_csv("../../../processed_data/val_rna.csv"),
-        'mirna': pd.read_csv("../../../processed_data/val_mir.csv")
+        'mirna': pd.read_csv("../../../processed_data/val_mir.csv"),
+        'meth': pd.read_csv("../../../processed_data/val_meth.csv")
     }
 
     model = LateIntegrationModel()

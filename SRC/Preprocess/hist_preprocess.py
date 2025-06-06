@@ -87,17 +87,61 @@ def histology_preprocess(image_dir: str,
     return train_df, val_df, test_df
 
 
+def wrangle_disgusting_file_ids(list) -> list:
+
+    """
+    Cleans up file IDs by removing unwanted characters and formatting them correctly.
+    :param list: List of file IDs to clean.
+    :return: Cleaned list of file IDs.
+    """
+    cleaned_list = []
+    for item in list:
+        item = item.split('.')[0]  # Remove file extension
+        item = item.split('-')[:4]  # Keep only the first four parts
+        item = '-'.join(item)  # Join back with '-'
+        item = item[:-1] + 'A'  # Replace last character with 'A'
+        cleaned_list.append(item)
+    return cleaned_list
+
+def foundation_histology_preprocess(input_df, manifest):
+
+    file_ids = input_df['file_name'].tolist()
+
+    cleaned_file_ids = wrangle_disgusting_file_ids(file_ids)
+
+    input_df['file_id'] = cleaned_file_ids
+    input_df.drop(['file_name'], axis=1, inplace=True)
+
+    # Merge with manifest to get the split and subtype information
+    merged_df = input_df.merge(manifest, left_on='file_id', right_on='submitter_id.samples', how='inner')
+
+    train_df = merged_df[merged_df['split'] == 'train'].drop(columns=['file_id','split'])
+    val_df = merged_df[merged_df['split'] == 'val'].drop(columns=['file_id','split'])
+    test_df = merged_df[merged_df['split'] == 'test'].drop(columns=['file_id','split'])
+
+    return train_df, val_df, test_df
+
+
+
+
 
 if __name__ == "__main__":
-    #image_directory = r"C:\Projects\Notebook_sandbox\hackathon\wsi\pngs_and_masks"
-    image_directory = r"C:\Projects\Notebook_sandbox\hackathon\wsi\test_dir"
+    # #image_directory = r"C:\Projects\Notebook_sandbox\hackathon\wsi\pngs_and_masks"
+    # image_directory = r"C:\Projects\Notebook_sandbox\hackathon\wsi\test_dir"
+    # manifest = pd.read_csv("../../data/hackathon_manifest.csv")
+    # tile_size = 1024  # Size of the center tile to extract
+    #
+    # train, val, test = histology_preprocess(image_directory, manifest, tile_size)
+    #
+    # #print the shapes
+    # print("Train shape:", train.shape)
+    # print("Validation shape:", val.shape)
+    # print("Test shape:", test.shape)
+    #
+    raw_data = pd.read_csv("../../data/he.csv")
     manifest = pd.read_csv("../../data/hackathon_manifest.csv")
-    tile_size = 1024  # Size of the center tile to extract
 
-    train, val, test = histology_preprocess(image_directory, manifest, tile_size)
-
-    #print the shapes
-    print("Train shape:", train.shape)
-    print("Validation shape:", val.shape)
-    print("Test shape:", test.shape)
-
+    train_df, val_df, test_df = foundation_histology_preprocess(raw_data, manifest)
+    print("Train shape:", train_df.shape)
+    print("Validation shape:", val_df.shape)
+    print("Test shape:", test_df.shape)

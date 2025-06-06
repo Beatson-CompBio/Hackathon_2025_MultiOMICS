@@ -131,12 +131,14 @@ class IntermediateIntegrationWrapper:
 if __name__ == "__main__":
     train_modalities = {
         'rna': pd.read_csv("../../../processed_data/train_rna.csv"),
-        'mirna': pd.read_csv("../../../processed_data/train_mir.csv")
+        'mirna': pd.read_csv("../../../processed_data/train_mir.csv"),
+        'cnv': pd.read_csv("../../../processed_data/train_cnv.csv"),
     }
 
     val_modalities = {
         'rna': pd.read_csv("../../../processed_data/val_rna.csv"),
-        'mirna': pd.read_csv("../../../processed_data/val_mir.csv")
+        'mirna': pd.read_csv("../../../processed_data/val_mir.csv"),
+        'cnv': pd.read_csv("../../../processed_data/val_cnv.csv"),
     }
 
     model = IntermediateIntegrationWrapper()
