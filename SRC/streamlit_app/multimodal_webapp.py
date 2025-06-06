@@ -408,7 +408,7 @@ with tab2:
     st.write(f"Shape of {modality_fullnames[selected_modality]} Validation Data:", val_data.shape)
     st.write(f"Shape of {modality_fullnames[selected_modality]} Test Data:", test_data.shape)
 
-    st.write(f"Columns in {modality_fullnames[selected_modality]} Train Data:", train_data.columns.tolist())
+    # st.write(f"Columns in {modality_fullnames[selected_modality]} Train Data:", train_data.columns.tolist())
 
     include_val = st.checkbox("Include validation data in UMAP", value=False)
 
