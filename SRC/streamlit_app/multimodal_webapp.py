@@ -268,55 +268,164 @@ class LateIntegrationModel:
 # --- Streamlit Interface with Tabs ---
 
 st.set_page_config(page_title="Multimodal Model App", layout="wide")
-st.title('🧬 My Cool Multimodal Webapp')
+st.title('🎗️ BreaSight: A Deep Dive into Lobular & Ductal Cancer')
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(['Landing PAge',"📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "Patient Inference"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(['Project Page',"📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "Patient Inference"])
 
 with tab1:
-    st.title('hello')
-    st.text('this is text')
+    st.title("🔬 Welcome to the Multimodal Breast Cancer Classifier App!")
+    st.write("""
+        The aim of this Hackathon project was to build a Machine Learning classifier to distinguish between two subtypes of Breast Cancer: **Lobular** and **Ductal**.  
+        
+        **🩸 Invasive Ductal Carcinoma (IDC)** accounts for about 80% of all breast cancer cases. Cancerous cells reside in the ducts.  
+        
+        **🧬 Invasive Lobular Carcinoma (ILC)** accounts for about 15% of cases and affects the lobules. Although both subtypes present similar symptoms (swelling and irritation), they require different treatments, making accurate classification crucial.
+        
+        Multi-omics datasets from TCGA ([link](https://www.cancer.gov/ccg/research/genome-sequencing/tcga)) were obtained and processed through a workflow of **data cleaning & filtering**, **feature selection**, and **modality integration** to build our best-performing model.
+    """)
+    st.markdown("---")
+
+    st.subheader("💡 Integration Methods")
+    st.markdown("""
+    - **Early Integration:** Concatenate all modality datasets into one combined matrix, then train the model.  
+    - **Intermediate Integration:** Transform each modality into a common representation (e.g., via a neural network), merge into a single table, and then fit the model.  
+    - **Late Integration:** Train separate models on each modality; aggregate their outputs (e.g., probability scores) into a final ensemble model.
+    """)
+    st.write("""
+        ℹ️ **Note:** For test samples, all modalities must be present. If a modality is missing for a sample, you may need to drop that sample across modalities or exclude the modality entirely.
+    """)
+    st.markdown("---")
+
+    st.subheader("📊 Model Evaluation Metrics")
+    st.markdown("""
+    We evaluated our models using four metrics:
+    1. **ROC-AUC Curve**  
+    2. **Accuracy**  
+    3. **F1 Score**  
+    4. **Weighted F1 Score**  
+
+    > The **Weighted F1 Score** was prioritized over the standard F1 Score to account for the class imbalance between Lobular and Ductal subtypes.
+    """)
+    st.markdown("---")
+
+    st.subheader("🖼️ Histology Image Preprocessing")
+    st.write("""
+        Histology H&E images were pre-processed using **[CLAM](https://github.com/mahmoodlab/CLAM)** (Data-Efficient, Weakly Supervised Whole-Slide Analysis).  
+        This preprocessing boosted our single Logistic Regression model's weighted F1 Score from **0.717 ➔ 0.825**!
+    """)
+    st.markdown("---")
+
+    st.subheader("📂 Data Source")
+    st.write("""
+        All data was obtained from the **TCGA-BRCA** cohort and subset into Lobular and Ductal datasets.
+    """)
+    st.markdown("---")
+
+    st.subheader("🚀 Project Workflow")
+    st.write("""
+        - **Simon** provided the initial codebase used in the Hackathon.  
+        - We experimented with different model architectures, modality combinations, and integration strategies.  
+        - The best-performing pipelines were documented and incorporated into this Streamlit app.
+    """)
+    st.markdown("---")
+
+    st.subheader("✨ App Features")
+    st.markdown("""
+    - **🔎 Exploratory Data Analysis:**  
+      • Visualize and explore each modality (RNA-Seq, CNV, Methylation, etc.).  
+    
+    - **🛠️ Model Training:**  
+      • Select modalities and integration strategies.  
+      • Train classifiers (e.g., Logistic Regression, Random Forest).  
+      • View feature importance and performance metrics in real time.  
+    
+    - **🖼️ Histology Image Viewer:**  
+      • Upload and inspect H&E slides.  
+      • See CLAM-generated attention maps and ROI highlights.
+    """)
+    st.info("✨ A sleek GUI powered by [Streamlit](https://streamlit.io/)—use the tabs above to navigate through the app! ✨")
+
 
 with tab2:
     # read in meth train
     st.subheader("Exploratory Data Analysis")
     st.write("This tab is for exploratory data analysis. You can visualize and explore the data here.")
 
-    # Example EDA: read in meth train, ignore col 1
-    meth_train = pd.read_csv("../../processed_data/train_meth.csv", index_col=0)
+    modality_fullnames = {
+        'rna':       'Gene Expression (RNA-Seq)',
+        'mir':     'MicroRNA Expression',
+        'cnv':       'Copy Number Variation',
+        'meth':      'DNA Methylation',
+        'hist': 'Histology Image',
+        'mutation':  'Somatic Mutation'
+    }
+
+    selected_modality_temp = st.selectbox("Select a modality to explore", modality_fullnames.values())
+    selected_modality = [key for key, value in modality_fullnames.items() if value == selected_modality_temp][0]
+
+    train_data = pd.read_csv(f"../../processed_data/train_{selected_modality}.csv")
+    val_data = pd.read_csv(f"../../processed_data/val_{selected_modality}.csv")
+    test_data = pd.read_csv(f"../../processed_data/test_{selected_modality}.csv")
+
+    ## shift submitter_id.samples to the front
+    if 'submitter_id.samples' in train_data.columns:
+        train_data = train_data[['submitter_id.samples'] + [col for col in train_data.columns if col != 'submitter_id.samples']]
+    if 'submitter_id.samples' in val_data.columns:
+        val_data = val_data[['submitter_id.samples'] + [col for col in val_data.columns if col != 'submitter_id.samples']]
+    if 'submitter_id.samples' in test_data.columns:
+        test_data = test_data[['submitter_id.samples'] + [col for col in test_data.columns if col != 'submitter_id.samples']]
+
+
+
+    y = train_data['subtype']
+    y_val = val_data['subtype']
+    y_test = test_data['subtype']
+
+    class_labels = {0: "ductal", 1: "lobular"}
+
+    # Table: train and val samples per subtype
+    subtype_counts = pd.DataFrame({
+        'Train Samples': y.value_counts().sort_index(),
+        'Validation Samples': y_val.value_counts().sort_index(),
+        'Test Samples': y_test.value_counts().sort_index()
+    }).fillna(0).astype(int)
+    subtype_counts.index = subtype_counts.index.map(class_labels)
+
+    # Place table on the left (25% width)
+    left, right = st.columns([1, 2])
+    with left:
+        st.subheader("Samples per Subtype")
+        st.dataframe(subtype_counts, use_container_width=True)
+        train_data = train_data.drop(columns=[f'Unnamed: 0'], errors='ignore')
+        val_data = val_data.drop(columns=[f'Unnamed: 0'], errors='ignore')
+        test_data = test_data.drop(columns=[f'Unnamed: 0'], errors='ignore')
 
     #plot first to cols in scatter coloured by subtype
-    st.subheader("Meth Train Data")
+    st.subheader(f"{modality_fullnames[selected_modality]} Train Data")
 
-    st.write(meth_train.head())
-    st.write("Shape of Meth Train Data:", meth_train.shape)
+    st.write(train_data.head().iloc[:, :50])  # Display first 10 columns of the train data
+    st.write(f"Shape of {modality_fullnames[selected_modality]} Train Data:", train_data.shape)
+    st.write(f"Shape of {modality_fullnames[selected_modality]} Validation Data:", val_data.shape)
+    st.write(f"Shape of {modality_fullnames[selected_modality]} Test Data:", test_data.shape)
 
-    st.write("Columns in Meth Train Data:", meth_train.columns.tolist())
+    st.write(f"Columns in {modality_fullnames[selected_modality]} Train Data:", train_data.columns.tolist())
 
-    # Plot first two columns in scatter plot coloured by subtype
-    if 'submitter_id.samples' in meth_train.columns:
-        meth_train = meth_train.drop(columns=['submitter_id.samples'])
-    if 'subtype' in meth_train.columns:
-        # do matplotlib to make a scatter plot
-        import matplotlib.pyplot as plt
-        plt.figure(figsize=(10, 6))
-        plt.scatter(meth_train.iloc[:, 0], meth_train.iloc[:, 1], c=meth_train['subtype'].astype('category').cat.codes, cmap='viridis', alpha=0.7)
-        plt.colorbar(label='Subtype')
-        plt.xlabel(meth_train.columns[0])
-        plt.ylabel(meth_train.columns[1])
-        plt.title('Scatter Plot of First Two Features in Meth Train Data')
-        st.pyplot(plt)
+    include_val = st.checkbox("Include validation data in UMAP", value=False)
 
-        #also show it in altair!
-        scatter = alt.Chart(meth_train).mark_circle(size=60).encode(
-            x=alt.X(meth_train.columns[0], title=meth_train.columns[0]),
-            y=alt.Y(meth_train.columns[1], title=meth_train.columns[1]),
-            color=alt.Color('subtype:N', title='Subtype'),
-            tooltip=[meth_train.columns[0], meth_train.columns[1], 'subtype']
-        ).properties(
-            width=800,
-            height=400
-        )
-        st.altair_chart(scatter, use_container_width=True)
+    st.write("This UMAP projection visualizes the data in a lower-dimensional space, helping to identify clusters and relationships between samples.")
+
+    if include_val:
+        umap_path = f"./umaps/{selected_modality}_umap_with_val.png"
+        st.caption("UMAP with train and validation data")
+    else:
+        umap_path = f"./umaps/{selected_modality}_umap.png"
+        st.caption("UMAP with train data only")
+
+    try:
+        st.image(umap_path, use_container_width=False, width=700)
+    except Exception as e:
+        st.warning(f"Sorry! Could not perform UMAP right now. Trust us, we have done it.")
+
 
 # --- Tab 1: Model Training ---
 with tab3:
@@ -451,10 +560,10 @@ with tab3:
         st.subheader("🔍 Intermediate Integration Model - Performance")
         st.write('Validation F1 Score:', st.session_state.intermediate_performance['f1'])
 
-        if 'train_modalities' not in st.session_state:
-            st.session_state.train_modalities = {} # Or your initial default value
+        # if 'train_modalities' not in st.session_state:
+        #     st.session_state.train_modalities = {} # Or your initial default value
         
-        st.write("**Intermediate Integration - Modalities in Data:**", list(train_modalities.keys()))
+        # st.write("**Intermediate Integration - Modalities in Data:**", list(train_modalities.keys()))
 
         # Late Integration Model Coefficients - Separate graphs for each modality
         st.subheader("🔍 Late Integration Model - Important Features by Coefficient (Per Modality)")
