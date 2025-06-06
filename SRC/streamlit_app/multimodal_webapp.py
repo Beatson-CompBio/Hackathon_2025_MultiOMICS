@@ -282,7 +282,7 @@ def load_csv(path):
 
 # === TABS ===
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    'Project Page', "📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "Patient Inference"
+    '🧬 Project Page', "📈 Exploratory Data Analysis", "📊 Model Training", "🧫 Histology", "🚑 Patient Inference"
 ])
 
 # === TAB 1: Project Overview ===
@@ -398,7 +398,7 @@ with tab2:
 
     umap_path = f"./umaps/{selected_modality}_umap_with_val.png" if include_val else f"./umaps/{selected_modality}_umap.png"
     try:
-        st.image(umap_path, use_column_width=False, width=700)
+        st.image(umap_path, use_container_width=False, width=700)
     except Exception:
         st.warning("Sorry! UMAP visualization not available.")
 
@@ -427,8 +427,8 @@ with tab3:
                 'late_coef_dict', 'late_performance', 'late_test_performance']:
         if key not in st.session_state:
             st.session_state[key] = None
-
-    if st.button(f'Train and Predict on {selected_modalities}'):
+    selected_modalities_str = ', '.join(selected_modalities).upper() if selected_modalities else "None"
+    if st.button(f'Train and Predict on: {selected_modalities_str}'):
         if not selected_modalities:
             st.error("Please select at least one modality.")
             st.stop()
@@ -514,7 +514,7 @@ with tab4:
     st.subheader("🧫 Histology Image Viewer")
     uploaded_image = st.file_uploader("Upload a Histology Image (PNG)", type=["png"])
     if uploaded_image:
-        st.image(uploaded_image, caption="Uploaded Slide", use_column_width=True)
+        st.image(uploaded_image, caption="Uploaded Slide", use_container_width=True)
     else:
         st.info("Please upload a .png file.")
 
